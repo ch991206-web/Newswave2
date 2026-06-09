@@ -99,6 +99,37 @@
   .tag-right { color: #f57d7d; }
   .tag-mid   { color: #4ecb8d; }
   .bias-text { font-size: 13px; color: #b0b8c8; line-height: 1.55; }
+  .bias-note { font-size: 11px; color: var(--muted); margin-top: 10px; padding: 8px 10px; background: rgba(79,142,247,0.06); border-radius: 6px; line-height: 1.5; }
+  .butterfly-note { font-size: 11px; color: var(--muted); margin-top: 4px; font-style: italic; }
+
+  /* Community */
+  .react-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .react-btn {
+    font-size: 12px; padding: 7px 11px; border-radius: 8px;
+    background: var(--pill-bg); border: 1px solid var(--border);
+    color: #b0b8c8; cursor: pointer; font-family: 'Noto Sans KR', sans-serif;
+    transition: all 0.15s;
+  }
+  .react-btn:hover { border-color: var(--accent); }
+  .react-btn.voted { border-color: var(--accent); color: var(--accent); background: rgba(79,142,247,0.1); }
+  .react-count { font-family: 'DM Mono', monospace; margin-left: 2px; }
+
+  .comment-input-row { display: flex; gap: 8px; margin-bottom: 10px; }
+  .comment-input {
+    flex: 1; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 9px 12px; color: var(--text); font-size: 13px;
+    font-family: 'Noto Sans KR', sans-serif; outline: none;
+  }
+  .comment-input:focus { border-color: var(--accent); }
+  .comment-send {
+    padding: 9px 14px; background: var(--accent); color: #fff; border: none;
+    border-radius: 8px; font-size: 13px; cursor: pointer; font-family: 'Noto Sans KR', sans-serif; white-space: nowrap;
+  }
+  .comment-item {
+    font-size: 13px; color: #c5cbd6; padding: 8px 10px; background: var(--surface);
+    border-radius: 8px; margin-bottom: 6px; line-height: 1.45;
+  }
+  .comment-empty { font-size: 12px; color: var(--muted); padding: 4px 0; }
 
   /* Butterfly */
   .butterfly-chain { display: flex; flex-direction: column; }
@@ -308,6 +339,62 @@ function toggleCard(card) {
   if (!wasExpanded) card.classList.add('expanded');
 }
 
+// 커뮤니티 데이터 (세션 동안 유지)
+const communityData = {};
+
+function react(e, type) {
+  e.stopPropagation();
+  const btn = e.currentTarget;
+  const row = btn.closest('.react-row');
+  const newsId = row.dataset.news;
+  if (!communityData[newsId]) communityData[newsId] = { left:0, right:0, mid:0, comments:[] };
+
+  // 이미 누른 버튼이면 취소, 아니면 카운트
+  if (btn.classList.contains('voted')) {
+    communityData[newsId][type]--;
+    btn.classList.remove('voted');
+  } else {
+    // 같은 그룹 내 다른 투표 취소
+    row.querySelectorAll('.react-btn.voted').forEach(b => {
+      b.classList.remove('voted');
+    });
+    // 이전 투표 카운트 정리
+    ['left','right','mid'].forEach(t => {
+      const target = row.querySelector(`[data-type="${t}"]`);
+    });
+    communityData[newsId][type]++;
+    btn.classList.add('voted');
+  }
+  // 카운트 갱신
+  const btns = row.querySelectorAll('.react-btn');
+  btns[0].querySelector('.react-count').textContent = communityData[newsId].left;
+  btns[1].querySelector('.react-count').textContent = communityData[newsId].right;
+  btns[2].querySelector('.react-count').textContent = communityData[newsId].mid;
+}
+
+function addComment(e) {
+  e.stopPropagation();
+  const section = e.currentTarget.closest('.ai-section');
+  const input = section.querySelector('.comment-input');
+  const listEl = section.querySelector('.comment-list');
+  const newsId = section.querySelector('.react-row').dataset.news;
+  const text = input.value.trim();
+  if (!text) return;
+
+  if (!communityData[newsId]) communityData[newsId] = { left:0, right:0, mid:0, comments:[] };
+  communityData[newsId].comments.unshift(text);
+  input.value = '';
+  renderComments(listEl, communityData[newsId].comments);
+}
+
+function renderComments(listEl, comments) {
+  if (!comments || comments.length === 0) {
+    listEl.innerHTML = '<div class="comment-empty">아직 의견이 없어요. 첫 의견을 남겨보세요.</div>';
+    return;
+  }
+  listEl.innerHTML = comments.map(c => `<div class="comment-item">${c.replace(/</g,'&lt;')}</div>`).join('');
+}
+
 function renderNews(news) {
   const list = document.getElementById('newsList');
   list.innerHTML = '';
@@ -363,12 +450,13 @@ function renderNews(news) {
         </div>
         <div class="ai-panel">
           <div class="ai-section">
-            <div class="ai-label">시각별 분석</div>
+            <div class="ai-label">시각별로 읽기</div>
             <div class="bias-row">
               <div class="bias-item"><span class="bias-tag tag-left">진보</span><span class="bias-text">${item.left}</span></div>
               <div class="bias-item"><span class="bias-tag tag-right">보수</span><span class="bias-text">${item.right}</span></div>
-              <div class="bias-item"><span class="bias-tag tag-mid">중립</span><span class="bias-text">${item.neutral}</span></div>
+              <div class="bias-item"><span class="bias-tag tag-mid">요약</span><span class="bias-text">${item.neutral}</span></div>
             </div>
+            <div class="bias-note">판단은 NewsWave가 하지 않아요. 양쪽 시각을 두고 직접 판단해보세요.</div>
           </div>
           <div class="ai-section">
             <div class="ai-label">🦋 나비효과</div>
@@ -380,6 +468,20 @@ function renderNews(news) {
                 </div>
               `).join('')}
             </div>
+            <div class="butterfly-note">예상 시나리오예요. 실제와 다를 수 있어요.</div>
+          </div>
+          <div class="ai-section">
+            <div class="ai-label">💬 커뮤니티</div>
+            <div class="react-row" data-news="${item.title}">
+              <button class="react-btn" onclick="react(event,'left')">👈 진보 공감 <span class="react-count">0</span></button>
+              <button class="react-btn" onclick="react(event,'right')">👉 보수 공감 <span class="react-count">0</span></button>
+              <button class="react-btn" onclick="react(event,'mid')">🤝 균형 <span class="react-count">0</span></button>
+            </div>
+            <div class="comment-input-row" onclick="event.stopPropagation()">
+              <input class="comment-input" placeholder="한 줄 의견을 남겨보세요" onkeydown="if(event.key==='Enter')addComment(event)" onclick="event.stopPropagation()">
+              <button class="comment-send" onclick="addComment(event)">등록</button>
+            </div>
+            <div class="comment-list"><div class="comment-empty">아직 의견이 없어요. 첫 의견을 남겨보세요.</div></div>
           </div>
         </div>
       `;
@@ -424,7 +526,7 @@ async function fetchNews() {
     "keywords": ["키워드1","키워드2","키워드3"],
     "left": "진보 시각 1~2문장",
     "right": "보수 시각 1~2문장",
-    "neutral": "중립 팩트 1~2문장",
+    "neutral": "양쪽 시각을 종합한 균형 잡힌 사실 요약 1~2문장 (판단/주장 없이 사실만)",
     "butterfly": ["1단계 영향","2단계 파급","3단계 장기 결과"]
   }
 ]
