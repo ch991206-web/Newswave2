@@ -75,9 +75,11 @@
   .badge-stock    { background: #1e3d2e; color: #4ecb8d; }
   .badge-entertainment { background: #3d1e3d; color: #d47df5; }
   .badge-social   { background: #3d2e1e; color: #f5a44e; }
+  .badge-world    { background: #1e3a3d; color: #4ecfd4; }
 
   .card-time { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; margin-left: auto; }
   .card-title { font-size: 14px; font-weight: 500; line-height: 1.5; margin-bottom: 8px; }
+  .card-title-ko { font-size: 13px; color: var(--muted); line-height: 1.45; margin-top: -4px; margin-bottom: 8px; }
   .card-keywords { display: flex; gap: 6px; flex-wrap: wrap; }
   .keyword { font-size: 11px; padding: 2px 7px; background: var(--pill-bg); border-radius: 4px; color: var(--muted); }
 
@@ -155,6 +157,7 @@
   <div class="tab" onclick="setTab(this,'증권')">📈 증권</div>
   <div class="tab" onclick="setTab(this,'연예')">🎬 연예</div>
   <div class="tab" onclick="setTab(this,'시사')">🌐 시사</div>
+  <div class="tab" onclick="setTab(this,'해외')">🇺🇸 해외</div>
 </div>
 
 <div class="main">
@@ -255,6 +258,26 @@ const SAMPLE_NEWS = [
     right: '섣부른 탈원전 정책이 전력난을 악화시키고 있으며 원전 확대가 현실적 해법이다.',
     neutral: '기상청은 올 여름 평균 기온이 역대 최고치를 경신할 가능성이 높다고 예보했다.',
     butterfly: ['전력 수요 급증으로 전기요금 인상 압박', '냉방 가전·에너지 절약 제품 수요 폭증', '폭염 취약계층 지원 예산 추가 편성 논의']
+  },
+  {
+    category: '해외', hour: '07:00',
+    title: 'Fed Holds Rates Steady, Signals Caution on Inflation',
+    titleKo: '연준, 금리 동결…인플레이션에 신중한 신호',
+    keywords: ['Fed','금리','인플레이션'],
+    left: '금리 동결은 경기 둔화 우려를 반영한 것으로, 서민 경제 보호를 위한 신중한 결정이다.',
+    right: '인플레이션이 여전히 목표치를 웃돌아 추가 긴축 여지를 남긴 합리적 판단이다.',
+    neutral: '미 연준이 기준금리를 동결하며 연내 인하 가능성에 대해서는 신중한 입장을 유지했다.',
+    butterfly: ['달러 강세로 원화 약세 압력', '한국 수출 기업 환차익 기대', '국내 기준금리 동결 전망 강화']
+  },
+  {
+    category: '해외', hour: '15:00',
+    title: 'AI Chip Demand Drives Tech Stocks to Record Highs',
+    titleKo: 'AI 반도체 수요, 기술주 사상 최고치로 견인',
+    keywords: ['AI반도체','나스닥','기술주'],
+    left: '특정 빅테크 기업으로의 부의 집중이 심화되어 양극화 우려가 커지고 있다.',
+    right: '혁신 기업에 대한 시장의 정당한 평가이며 미국 기술 경쟁력의 증거다.',
+    neutral: 'AI 반도체 수요 급증으로 주요 기술주가 사상 최고치를 기록, 나스닥 지수를 끌어올렸다.',
+    butterfly: ['국내 반도체 협력사 수혜', '글로벌 AI 투자 경쟁 가속', '반도체 소재·장비 수요 확대']
   }
 ];
 
@@ -294,7 +317,8 @@ function renderNews(news) {
     '정치': 'badge-politics',
     '증권': 'badge-stock',
     '연예': 'badge-entertainment',
-    '시사': 'badge-social'
+    '시사': 'badge-social',
+    '해외': 'badge-world'
   };
 
   // 시간대별로 그룹핑
@@ -332,6 +356,7 @@ function renderNews(news) {
             <span class="card-time">${item.hour}</span>
           </div>
           <div class="card-title">${item.title}</div>
+          ${item.titleKo ? `<div class="card-title-ko">${item.titleKo}</div>` : ''}
           <div class="card-keywords">
             ${item.keywords.map(k => `<span class="keyword">#${k}</span>`).join('')}
           </div>
@@ -386,7 +411,7 @@ async function fetchNews() {
 
   const todayStr = today.toLocaleDateString('ko-KR', {year:'numeric',month:'long',day:'numeric'});
 
-  const prompt = `오늘(${todayStr}) 한국의 주요 뉴스를 정치 2개, 증권 2개, 연예 2개, 시사 2개 총 8개 분석해줘.
+  const prompt = `오늘(${todayStr}) 주요 뉴스를 한국 정치 2개, 증권 2개, 연예 2개, 시사 2개, 해외(미국 등) 2개 총 10개 분석해줘.
 
 반드시 아래 JSON 형식으로만 응답해. 다른 텍스트 없이 JSON만 출력:
 
@@ -395,6 +420,7 @@ async function fetchNews() {
     "category": "정치",
     "hour": "09:00",
     "title": "뉴스 제목",
+    "titleKo": "(해외 뉴스만) 영문 제목의 한글 번역, 한국 뉴스는 생략",
     "keywords": ["키워드1","키워드2","키워드3"],
     "left": "진보 시각 1~2문장",
     "right": "보수 시각 1~2문장",
@@ -403,7 +429,7 @@ async function fetchNews() {
   }
 ]
 
-각 뉴스의 hour는 실제 보도 시간대를 반영해서 다양하게 (08:00~18:00 사이). 실제 최신 이슈 기반으로 작성해줘.`;
+해외 뉴스(category가 "해외")는 title을 영어 원문으로 쓰고 titleKo에 한글 번역을 넣어줘. 한국 뉴스는 title을 한글로 쓰고 titleKo는 비워둬. 각 뉴스의 hour는 다양하게(07:00~18:00). 실제 최신 이슈 기반으로 작성해줘.`;
 
   try {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -411,7 +437,7 @@ async function fetchNews() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 2500,
+        max_tokens: 3200,
         messages: [{ role: 'user', content: prompt }]
       })
     });
