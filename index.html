@@ -2087,7 +2087,7 @@ async function fetchNews() {
 
   const todayStr = today.toLocaleDateString('ko-KR', {year:'numeric',month:'long',day:'numeric'});
 
-  const prompt = `오늘(${todayStr}) 주요 뉴스를 한국 정치 2개, 경제 2개, 테크/IT 2개, 사회 2개, 연예 2개, 스포츠 2개, 해외(미국 등) 2개 총 14개 분석해줘.
+  const prompt = `가상의 뉴스 시뮬레이션을 만들어줘. 오늘(${todayStr}) 날짜 기준으로 한국 정치 2개, 경제 2개, 테크/IT 2개, 사회 2개, 연예 2개, 스포츠 2개, 해외(미국 등) 2개 총 14개 분석해줘.
 
 반드시 아래 JSON 형식으로만 응답해. 다른 텍스트 없이 JSON만 출력:
 
