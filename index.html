@@ -2117,27 +2117,21 @@ async function fetchNews() {
 
 해외 뉴스(category가 "해외")는 title을 영어 원문으로 쓰고 titleKo에 한글 번역을 넣어줘. 한국 뉴스는 title을 한글로 쓰고 titleKo는 비워둬. summary가 가장 중요해. 그 뉴스를 처음 접한 사람도 "아 이런 일이 있었구나"를 바로 이해하도록 배경·맥락을 친절하게 풀어써줘 (제목만 함축하지 말고). timeline은 사건 경과를 3~4개 날짜순으로, data는 관련 핵심 수치 2~3개를 넣어줘. importance는 금리·세금·부동산·법개정 등 독자 삶에 직접 영향이 크거나 화제성이 매우 높은 뉴스만 "high", 나머지는 "normal"로 (전체의 30~40%만 high). biasRatio는 이 이슈를 보도한 언론들의 진보/중도/보수 논조 비율을 합 100으로 추정 (예: [55,25,20]). sources는 이 이슈를 보도한 실제 주요 언론사 2~3곳 이름. 각 뉴스의 hour는 다양하게(07:00~18:00). 실제 최신 이슈 기반으로 작성해줘.`;
 
-  try {
-    const res = await fetch('https://newsda-api.chltkddnjs56.workers.dev/news', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 16000,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error?.message || '오류 발생');
-
-    const raw = data.content.map(b => b.text || '').join('');
-    const clean = raw.replace(/```json|```/g, '').trim();
-    const news = JSON.parse(clean);
-
-    renderNews(news);
-    btn.innerHTML = '🔄 새로고침';
-    btn.disabled = false;
+try {
+      const res = await fetch('https://newsda-api.chltkddnjs56.workers.dev/news-all', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      });
+      
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      
+      const news = data.articles || [];
+      
+      renderNews(news);
+      btn.innerHTML = '🔄 새로고침' + (data.cached ? ' (저장됨)' : '');
+      btn.disabled = false; 
 
   } catch (e) {
     list.innerHTML = '';
