@@ -345,6 +345,56 @@
   .chain-item:last-child .chain-line { display: none; }
   .chain-text { font-size: 13px; color: var(--text2); line-height: 1.55; padding-bottom: 14px; }
 
+  /* 어려운 단어 인라인 표시 */
+  .term-mark {
+    color: var(--accent);
+    border-bottom: 1px dashed var(--accent);
+    cursor: pointer;
+    font-weight: 500;
+    padding-bottom: 1px;
+  }
+  .term-mark:hover { opacity: 0.7; }
+  
+  /* 단어 뜻 팝업 */
+  .term-popup {
+    position: fixed;
+    z-index: 500;
+    max-width: 280px;
+    background: var(--surface2);
+    border: 1px solid var(--accent);
+    border-radius: 12px;
+    padding: 14px 16px;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.4);
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--text2);
+    animation: popfade 0.18s ease-out;
+  }
+  .term-popup-word {
+    font-weight: 800;
+    color: var(--accent);
+    font-size: 14px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .term-popup-close {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 16px;
+    padding: 0 0 0 8px;
+  }
+  @keyframes popfade {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .term-popup-backdrop {
+    position: fixed; inset: 0; z-index: 499;
+    background: transparent;
+  }
   /* Loading */
   .skeleton { background: linear-gradient(90deg, var(--border) 25%, var(--border2) 50%, var(--border) 75%); background-size: 200% 100%; animation: shimmer 1.8s infinite; border-radius: 8px; }
   @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
@@ -1177,7 +1227,80 @@ function setTab(el, tab) {
 }
 
 // 🦋 나비효과 렌더 (신버전: {text, why, dir} 객체 / 구버전: 문자열 모두 지원)
-function butterflyHTML(item) {
+// 본문에서 어려운 단어 찾아서 파란 밑줄 마커로 변환
+function markTerms(text, terms) {
+  if (!text || !terms || !terms.length) return text || '';
+  let result = text;
+  // 긴 단어부터 처리 (짧은 단어가 긴 단어 안에 있는 경우 방지)
+  const sorted = [...terms].sort((a, b) => (b.word||'').length - (a.word||'').length);
+  sorted.forEach((t, idx) => {
+    if (!t.word) return;
+    // 정규식 특수문자 이스케이프
+    const escaped = t.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(escaped, 'g');
+    // 정의는 HTML 속성용으로 인코딩
+    const defEncoded = (t.def || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const wordEncoded = t.word.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    let replaced = false;
+    result = result.replace(regex, (match) => {
+      if (replaced) return match; // 첫 등장만 마킹
+      replaced = true;
+      return `<span class="term-mark" onclick="showTermPopup(event, '${wordEncoded}', '${defEncoded}')">${match}</span>`;
+    });
+  });
+  return result;
+}
+
+// 어려운 단어 팝업 표시
+function showTermPopup(e, word, def) {
+  e.stopPropagation();
+  // 기존 팝업 닫기
+  closeTermPopup();
+  
+  // 팝업 만들기
+  const backdrop = document.createElement('div');
+  backdrop.className = 'term-popup-backdrop';
+  backdrop.id = 'termPopupBackdrop';
+  backdrop.onclick = closeTermPopup;
+  
+  const popup = document.createElement('div');
+  popup.className = 'term-popup';
+  popup.id = 'termPopup';
+  popup.innerHTML = `
+    <div class="term-popup-word">
+      <span>🔤 ${word}</span>
+      <button class="term-popup-close" onclick="closeTermPopup()">✕</button>
+    </div>
+    <div>${def}</div>
+  `;
+  
+  document.body.appendChild(backdrop);
+  document.body.appendChild(popup);
+  
+  // 위치 계산 (클릭한 단어 근처에)
+  const rect = e.target.getBoundingClientRect();
+  const popupRect = popup.getBoundingClientRect();
+  let left = rect.left;
+  let top = rect.bottom + 8;
+  
+  // 화면 밖으로 안 나가게 보정
+  if (left + popupRect.width > window.innerWidth - 16) {
+    left = window.innerWidth - popupRect.width - 16;
+  }
+  if (left < 16) left = 16;
+  if (top + popupRect.height > window.innerHeight - 16) {
+    top = rect.top - popupRect.height - 8;
+  }
+  
+  popup.style.left = left + 'px';
+  popup.style.top = top + 'px';
+}
+
+function closeTermPopup() {
+  document.getElementById('termPopup')?.remove();
+  document.getElementById('termPopupBackdrop')?.remove();
+}
+  function butterflyHTML(item) {
   const steps = item.butterfly || [];
   if (!steps.length) return '';
   const dirIcon = d => d === 'up' ? '📈' : d === 'down' ? '📉' : '➖';
@@ -1752,14 +1875,14 @@ function openNewsModal(idx) {
     </div>` : ''}
     <div class="ai-section">
       <div class="ai-label no-bar">📍 무슨 일이 있었나</div>
-      <div class="whathappened">${summary}</div>
+      <div class="whathappened">${markTerms(summary, item.terms)}</div>
       ${terms ? `<div class="terms-wrap">${terms}</div>` : ''}
     </div>
     <div class="ai-section" style="margin-top:20px">
       <div class="ai-label">양쪽은 이렇게 봐요</div>
       <div class="bias-row">
-        <div class="bias-item"><span class="bias-tag tag-left">진보</span><span class="bias-text">${item.left||''}</span></div>
-        <div class="bias-item"><span class="bias-tag tag-right">보수</span><span class="bias-text">${item.right||''}</span></div>
+<div class="bias-item"><span class="bias-tag tag-left">진보</span><span class="bias-text">${markTerms(item.left||'', item.terms)}</span></div>
+        <div class="bias-item"><span class="bias-tag tag-right">보수</span><span class="bias-text">${markTerms(item.right||'', item.terms)}</span></div>
       </div>
       <div class="bias-note">뉴스다는 판단하지 않아요. 양쪽 시각을 두고 직접 판단해보세요. 🐱</div>
     </div>
@@ -1993,7 +2116,7 @@ function renderNews(news) {
           </button>
           <div class="ai-section">
             <div class="ai-label no-bar">📍 무슨 일이 있었나</div>
-            <div class="whathappened">${item.summary || item.neutral}</div>
+            <div class="whathappened">${markTerms(item.summary || item.neutral, item.terms)}</div>
           </div>
           <div class="ai-section">
             <div class="ai-label">양쪽은 이렇게 봐요</div>
