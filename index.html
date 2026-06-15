@@ -589,13 +589,50 @@
   .term-item.open .term-arrow { transform: rotate(180deg); }
   .term-def { display: none; font-size: 13.5px; color: var(--text2); line-height: 1.65; margin-top: 8px; }
   .term-item.open .term-def { display: block; }
-  .imp-toggle-btn {
+.imp-toggle-btn {
     padding: 7px 14px; border-radius: 20px; font-size: 13px; font-weight: 700;
     border: 1.5px solid var(--accent2); background: transparent;
     color: var(--accent2); cursor: pointer; font-family: 'Pretendard', sans-serif;
     transition: all 0.18s; letter-spacing: -0.2px;
   }
   .imp-toggle-btn.on { background: var(--accent2); color: #fff; }
+  
+  /* 🔥 정렬 토글 버튼 */
+  .sort-toggle-btn {
+    padding: 7px 14px; border-radius: 20px; font-size: 13px; font-weight: 700;
+    border: 1.5px solid var(--accent); background: var(--accent-dim);
+    color: var(--accent); cursor: pointer; font-family: 'Pretendard', sans-serif;
+    transition: all 0.18s; letter-spacing: -0.2px;
+    margin-left: 6px;
+  }
+  .sort-toggle-btn:hover { opacity: 0.85; }
+  
+  /* 🏆 트렌드 순위 색깔 강조 */
+  .card-hook.rank-1, .nt-hook.rank-1 {
+    color: #ffd86b !important;
+    font-size: 1.05em;
+    text-shadow: 0 0 12px rgba(255,216,107,0.3);
+  }
+  .card-hook.rank-2, .nt-hook.rank-2 {
+    color: #d6dae3 !important;
+    font-size: 1.02em;
+  }
+  .card-hook.rank-3, .nt-hook.rank-3 {
+    color: #e0a878 !important;
+    font-size: 1.02em;
+  }
+  
+  /* 라이트 모드용 */
+  body.light .card-hook.rank-1, body.light .nt-hook.rank-1 {
+    color: #c79318 !important;
+    text-shadow: 0 0 8px rgba(199,147,24,0.2);
+  }
+  body.light .card-hook.rank-2, body.light .nt-hook.rank-2 {
+    color: #6b7280 !important;
+  }
+  body.light .card-hook.rank-3, body.light .nt-hook.rank-3 {
+    color: #a05a25 !important;
+  }
 
 
   /* Top 3 */
@@ -885,8 +922,9 @@
 </div>
 
 <div class="main">
-  <div class="filter-bar">
+ <div class="filter-bar">
     <button class="imp-toggle-btn" id="impBtn" onclick="toggleImp()">🔴 중요 뉴스만</button>
+    <button class="sort-toggle-btn" id="sortBtn" onclick="toggleSort()">🔥 트렌드순</button>
     <div class="layout-toggle">
 <button class="layout-btn" id="listBtn" onclick="setLayout('list')">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
@@ -2106,7 +2144,7 @@ function renderGrid(news) {
         </div>
         ${item.img ? '<div></div>' : `<div class="nt-emoji">${item.emoji || cvEmojiMap[item.category] || '📰'}</div>`}
         ${num && !item.img ? `<div class="nt-num">${num}</div>` : ''}
-        <div class="nt-hook">${item.hook || item.title}</div>
+        <div class="nt-hook ${getRankClass(item)}">${item.hook || item.title}</div>
       </div>`;
   }
 
@@ -2321,6 +2359,15 @@ function toggleImp() {
   filterNews();
 }
 
+// 🔥 정렬 토글
+function toggleSort() {
+  sortMode = (sortMode === 'trend') ? 'time' : 'trend';
+  const btn = document.getElementById('sortBtn');
+  btn.textContent = sortMode === 'trend' ? '🔥 트렌드순' : '🕐 최신순';
+  // 다시 그리기
+  renderNews(currentNews);
+}
+
 function filterNews() {
   const impOnlyVal = impOnly;
   document.querySelectorAll('.time-block').forEach(block => {
@@ -2410,8 +2457,87 @@ function renderComments(listEl, comments) {
   listEl.innerHTML = comments.map(c => `<div class="comment-item">${c.replace(/</g,'&lt;')}</div>`).join('');
 }
 
+// 🏆 현재 탭/카테고리에서 순위 클래스 반환
+function getRankClass(item) {
+  // 전체 탭일 땐 전체 순위, 카테고리 탭일 땐 카테고리 순위
+  const key = currentTab === '전체' ? '전체' : item.category;
+  const rank = trendRanks[key] && trendRanks[key][item.title];
+  if (rank === 1) return 'rank-1';
+  if (rank === 2) return 'rank-2';
+  if (rank === 3) return 'rank-3';
+  return '';
+}
+
+// 🔥 트렌드 점수 계산 (높을수록 인기/중요)
+function calcTrendScore(item) {
+  let score = 0;
+  
+  // 1. 중요 뉴스 보너스 (제일 큰 가중치)
+  if (item.importance === 'high') score += 50;
+  
+  // 2. 사진 있으면 +5
+  if (item.img && !item.img.includes('unsplash')) score += 5;
+  
+  // 3. 요약 길이 (200자 이상)
+  const summaryLen = (item.summary || '').length;
+  if (summaryLen > 200) score += 10;
+  else if (summaryLen > 100) score += 5;
+  
+  // 4. 양쪽 시각이 풍부한지
+  const leftLen = (item.left || '').length;
+  const rightLen = (item.right || '').length;
+  if (leftLen > 50 && rightLen > 50) score += 8;
+  
+  // 5. 타임라인 있으면 +5
+  if (item.timeline && item.timeline.length >= 3) score += 5;
+  
+  // 6. 데이터 (수치) 있으면 +3
+  if (item.data && item.data.length > 0) score += 3;
+  
+  // 7. 나비효과 풍부한지
+  if (item.butterfly && item.butterfly.length >= 3) score += 5;
+  
+  // 8. 시간 보너스 (최신일수록 +) - hour는 HH:MM 형식
+  const hour = parseInt((item.hour || '00:00').split(':')[0]);
+  // 일반적인 핵심 시간대 (오전~오후)
+  if (hour >= 8 && hour <= 18) score += 3;
+  
+  return score;
+}
+
+// 카테고리별/전체 1~3위 계산
+function getTopRanksByCategory(news) {
+  const ranks = {}; // { '정치': { '제목1': 1, '제목2': 2, ... }, '전체': {...} }
+  
+  // 카테고리별
+  const categories = [...new Set(news.map(n => n.category))];
+  categories.forEach(cat => {
+    const catNews = news.filter(n => n.category === cat);
+    const sorted = [...catNews].sort((a, b) => calcTrendScore(b) - calcTrendScore(a));
+    ranks[cat] = {};
+    sorted.slice(0, 3).forEach((n, idx) => {
+      ranks[cat][n.title] = idx + 1;
+    });
+  });
+  
+  // 전체 1~3위
+  const sortedAll = [...news].sort((a, b) => calcTrendScore(b) - calcTrendScore(a));
+  ranks['전체'] = {};
+  sortedAll.slice(0, 3).forEach((n, idx) => {
+    ranks['전체'][n.title] = idx + 1;
+  });
+  
+  return ranks;
+}
+
+// 정렬 모드 (trend = 트렌드순, time = 최신순)
+let sortMode = 'trend';
+let trendRanks = {};
 function renderNews(news) {
   currentNews = news;
+  // 트렌드 순위 미리 계산
+  trendRanks = getTopRanksByCategory(news);
+  
   const list = document.getElementById('newsList');
   list.innerHTML = '';
   document.getElementById('top3Area').innerHTML = '';
@@ -2463,16 +2589,26 @@ function renderNews(news) {
     '스포츠': 'badge-sports'
   };
 
+// 정렬 모드에 따라 뉴스 정렬
+  let sortedNews;
+  if (sortMode === 'trend') {
+    sortedNews = [...news].sort((a, b) => calcTrendScore(b) - calcTrendScore(a));
+  } else {
+    sortedNews = [...news].sort((a, b) => (b.hour || '').localeCompare(a.hour || ''));
+  }
+  
   // 시간대별로 그룹핑
   const grouped = {};
-  news.forEach(item => {
-    const h = item.hour || '기타';
+  sortedNews.forEach(item => {
+    const h = (sortMode === 'trend') ? '🔥 트렌딩' : (item.hour || '기타');
     if (!grouped[h]) grouped[h] = [];
     grouped[h].push(item);
   });
 
-  // 시간 순 정렬
-  const sortedHours = Object.keys(grouped).sort().reverse();
+  // 정렬: 트렌드순일 땐 그대로, 시간순일 땐 시간 역순
+  const sortedHours = sortMode === 'trend' 
+    ? Object.keys(grouped) 
+    : Object.keys(grouped).sort().reverse();
 
   sortedHours.forEach(hour => {
     const block = document.createElement('div');
@@ -2507,7 +2643,7 @@ function renderNews(news) {
             <span class="card-time" style="color:rgba(255,255,255,0.85)">${item.hour}</span>
               <span class="card-fish-reward" title="읽으면 받을 물고기">🐟 +${calcFishReward(item)}</span>
             </div>
-            <div class="card-hook hero-hook">${item.hook || item.title}</div>
+           <div class="card-hook hero-hook ${getRankClass(item)}">${item.hook || item.title}</div>
             <div class="card-title-sub hero-sub">${item.hook ? item.title : (item.titleKo || '')}</div>
           </div>
         </div>
