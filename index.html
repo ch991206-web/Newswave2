@@ -2533,11 +2533,19 @@ function getCatRankClass(item) {
   return '';
 }
 
-// 전체 탭에서의 순위 숫자 뱃지 HTML
+// 순위 뱃지 HTML (현재 탭에 따라 다름)
 function getRankBadge(item) {
-  const rank = trendRanks['전체'] && trendRanks['전체'][item.title];
-  if (!rank) return '';
-  return `<span class="rank-badge rank-badge-${rank}">${rank}위</span>`;
+  if (currentTab === '전체') {
+    // 전체 탭: 전체 1/2/3위만 뱃지
+    const rank = trendRanks['전체'] && trendRanks['전체'][item.title];
+    if (!rank) return '';
+    return `<span class="rank-badge rank-badge-${rank}">${rank}위</span>`;
+  } else {
+    // 카테고리 탭: 그 카테고리의 1/2/3위만 뱃지 (카테고리 이름 포함)
+    const rank = trendRanks[item.category] && trendRanks[item.category][item.title];
+    if (!rank) return '';
+    return `<span class="rank-badge rank-badge-${rank}">${item.category} ${rank}위</span>`;
+  }
 }
 
 // 호환용 (기존 호출이 있을 경우 대비)
