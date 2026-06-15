@@ -1456,6 +1456,10 @@ function setTab(el, tab) {
   } else {
     setLayout('list');
   }
+  // 탭 바뀌면 카드 다시 그려서 테두리/글씨 색 갱신
+  if (currentNews && currentNews.length) {
+    renderNews(currentNews);
+  }
   filterNews();
 }
 
@@ -2193,9 +2197,14 @@ const catRank = getCatRankClass(item);
       </div>`;
   }
 
-  // 최신순 정렬 (늦은 시간이 위, 원본 인덱스 유지)
+// 정렬 (트렌드순 또는 최신순)
   const ordered = news.map((item, idx) => ({item, idx}))
-    .sort((a, b) => (b.item.hour || '').localeCompare(a.item.hour || ''));
+    .sort((a, b) => {
+      if (sortMode === 'trend') {
+        return calcTrendScore(b.item) - calcTrendScore(a.item);
+      }
+      return (b.item.hour || '').localeCompare(a.item.hour || '');
+    });
 
   grid.innerHTML = `<div class="grid-time-tiles">${ordered.map(({item, idx}) => tileHTML(item, idx)).join('')}</div>`;
   applyGridFilter();
@@ -2409,8 +2418,9 @@ function toggleSort() {
   sortMode = (sortMode === 'trend') ? 'time' : 'trend';
   const btn = document.getElementById('sortBtn');
   btn.textContent = sortMode === 'trend' ? '🔥 트렌드순' : '🕐 최신순';
-  // 다시 그리기
+  // 리스트 + 격자 둘 다 다시 그리기
   renderNews(currentNews);
+  renderGrid(currentNews);
 }
 
 function filterNews() {
@@ -2512,8 +2522,10 @@ function getAllRankClass(item) {
   return '';
 }
 
-// 카테고리 탭에서의 순위 (테두리 색용)
+// 카테고리 탭에서의 순위 (테두리 색용) - 전체 탭에선 적용 안 됨
 function getCatRankClass(item) {
+  // 전체 탭일 땐 테두리 없음!
+  if (currentTab === '전체') return '';
   const rank = trendRanks[item.category] && trendRanks[item.category][item.title];
   if (rank === 1) return 'rank-cat-1';
   if (rank === 2) return 'rank-cat-2';
@@ -2662,13 +2674,19 @@ function renderNews(news) {
     sortedNews = [...news].sort((a, b) => (b.hour || '').localeCompare(a.hour || ''));
   }
   
-  // 시간대별로 그룹핑
+  // 그룹핑: 트렌드 모드일 땐 한 그룹, 시간 모드일 땐 시간별
   const grouped = {};
-  sortedNews.forEach(item => {
-    const h = (sortMode === 'trend') ? '🔥 트렌딩' : (item.hour || '기타');
-    if (!grouped[h]) grouped[h] = [];
-    grouped[h].push(item);
-  });
+  if (sortMode === 'trend') {
+    // 트렌드 모드: 정렬된 순서 그대로 한 그룹
+    grouped['🔥 트렌딩 TOP'] = sortedNews;
+  } else {
+    // 시간 모드: 시간대별 그룹핑
+    sortedNews.forEach(item => {
+      const h = item.hour || '기타';
+      if (!grouped[h]) grouped[h] = [];
+      grouped[h].push(item);
+    });
+  }
 
   // 정렬: 트렌드순일 땐 그대로, 시간순일 땐 시간 역순
   const sortedHours = sortMode === 'trend' 
