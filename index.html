@@ -607,31 +607,75 @@
   }
   .sort-toggle-btn:hover { opacity: 0.85; }
   
-  /* 🏆 트렌드 순위 색깔 강조 */
-  .card-hook.rank-1, .nt-hook.rank-1 {
+/* 🏆 전체 탭 - 글씨 색깔 강조 */
+  .card-hook.rank-all-1, .nt-hook.rank-all-1 {
     color: #ffd86b !important;
     font-size: 1.05em;
     text-shadow: 0 0 12px rgba(255,216,107,0.3);
   }
-  .card-hook.rank-2, .nt-hook.rank-2 {
+  .card-hook.rank-all-2, .nt-hook.rank-all-2 {
     color: #d6dae3 !important;
     font-size: 1.02em;
   }
-  .card-hook.rank-3, .nt-hook.rank-3 {
+  .card-hook.rank-all-3, .nt-hook.rank-all-3 {
     color: #e0a878 !important;
     font-size: 1.02em;
   }
   
-  /* 라이트 모드용 */
-  body.light .card-hook.rank-1, body.light .nt-hook.rank-1 {
+  /* 라이트 모드용 - 전체 1/2/3위 */
+  body.light .card-hook.rank-all-1, body.light .nt-hook.rank-all-1 {
     color: #c79318 !important;
     text-shadow: 0 0 8px rgba(199,147,24,0.2);
   }
-  body.light .card-hook.rank-2, body.light .nt-hook.rank-2 {
+  body.light .card-hook.rank-all-2, body.light .nt-hook.rank-all-2 {
     color: #6b7280 !important;
   }
-  body.light .card-hook.rank-3, body.light .nt-hook.rank-3 {
+  body.light .card-hook.rank-all-3, body.light .nt-hook.rank-all-3 {
     color: #a05a25 !important;
+  }
+  
+  /* 🏆 카테고리별 탭 - 카드 테두리 색깔 강조 */
+  .news-card.rank-cat-1 {
+    border-color: #ffd86b !important;
+    box-shadow: 0 0 16px rgba(255,216,107,0.25);
+  }
+  .news-card.rank-cat-2 {
+    border-color: #d6dae3 !important;
+    box-shadow: 0 0 12px rgba(214,218,227,0.2);
+  }
+  .news-card.rank-cat-3 {
+    border-color: #e0a878 !important;
+    box-shadow: 0 0 12px rgba(224,168,120,0.2);
+  }
+  
+  /* 격자(타일)에도 테두리 적용 */
+  .news-tile.rank-cat-1 {
+    box-shadow: 0 0 0 2px #ffd86b, 0 0 16px rgba(255,216,107,0.4);
+  }
+  .news-tile.rank-cat-2 {
+    box-shadow: 0 0 0 2px #d6dae3, 0 0 12px rgba(214,218,227,0.3);
+  }
+  .news-tile.rank-cat-3 {
+    box-shadow: 0 0 0 2px #e0a878, 0 0 12px rgba(224,168,120,0.3);
+  }
+  
+  /* 순위 숫자 뱃지 (전체 탭에서만) */
+  .rank-badge {
+    display: inline-block;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px; font-weight: 800;
+    padding: 2px 8px;
+    border-radius: 5px;
+    margin-right: 6px;
+  }
+  .rank-badge-1 {
+    background: #ffd86b; color: #5c3a00;
+  }
+  .rank-badge-2 {
+    background: #d6dae3; color: #2a2e38;
+  }
+  .rank-badge-3 {
+    background: #e0a878; color: #4a2a10;
   }
 
 
@@ -2135,8 +2179,9 @@ function renderGrid(news) {
     const num = item.data && item.data[0] ? `${item.data[0].label} ${item.data[0].value}` : '';
     const photoStyle = item.img ? `style="background-image:linear-gradient(to bottom, rgba(0,0,0,0.15), rgba(0,0,0,0.7)), url('${item.img}');background-size:cover;background-position:center"` : '';
     const isRead = readNews.has(item.title);
+const catRank = getCatRankClass(item);
     return `
-      <div class="news-tile ${cvMap[item.category]||'cv-social'} ${isRead ? 'read' : ''}" ${photoStyle} data-category="${item.category}" data-imp="${item.importance}" onclick="openNewsModal(${idx})">
+      <div class="news-tile ${cvMap[item.category]||'cv-social'} ${isRead ? 'read' : ''} ${catRank}" ${photoStyle} data-category="${item.category}" data-imp="${item.importance}" onclick="openNewsModal(${idx})">
         <div class="nt-top">
           <span class="nt-cat">${item.category}</span>
           ${item.importance==='high' ? '<span class="nt-imp">🔴</span>' : ''}
@@ -2144,7 +2189,7 @@ function renderGrid(news) {
         </div>
         ${item.img ? '<div></div>' : `<div class="nt-emoji">${item.emoji || cvEmojiMap[item.category] || '📰'}</div>`}
         ${num && !item.img ? `<div class="nt-num">${num}</div>` : ''}
-        <div class="nt-hook ${getRankClass(item)}">${item.hook || item.title}</div>
+        <div class="nt-hook ${getAllRankClass(item)}">${getRankBadge(item)}${item.hook || item.title}</div>
       </div>`;
   }
 
@@ -2458,14 +2503,34 @@ function renderComments(listEl, comments) {
 }
 
 // 🏆 현재 탭/카테고리에서 순위 클래스 반환
-function getRankClass(item) {
-  // 전체 탭일 땐 전체 순위, 카테고리 탭일 땐 카테고리 순위
-  const key = currentTab === '전체' ? '전체' : item.category;
-  const rank = trendRanks[key] && trendRanks[key][item.title];
-  if (rank === 1) return 'rank-1';
-  if (rank === 2) return 'rank-2';
-  if (rank === 3) return 'rank-3';
+// 전체 탭에서의 순위 (글씨 색용)
+function getAllRankClass(item) {
+  const rank = trendRanks['전체'] && trendRanks['전체'][item.title];
+  if (rank === 1) return 'rank-all-1';
+  if (rank === 2) return 'rank-all-2';
+  if (rank === 3) return 'rank-all-3';
   return '';
+}
+
+// 카테고리 탭에서의 순위 (테두리 색용)
+function getCatRankClass(item) {
+  const rank = trendRanks[item.category] && trendRanks[item.category][item.title];
+  if (rank === 1) return 'rank-cat-1';
+  if (rank === 2) return 'rank-cat-2';
+  if (rank === 3) return 'rank-cat-3';
+  return '';
+}
+
+// 전체 탭에서의 순위 숫자 뱃지 HTML
+function getRankBadge(item) {
+  const rank = trendRanks['전체'] && trendRanks['전체'][item.title];
+  if (!rank) return '';
+  return `<span class="rank-badge rank-badge-${rank}">${rank}위</span>`;
+}
+
+// 호환용 (기존 호출이 있을 경우 대비)
+function getRankClass(item) {
+  return getAllRankClass(item);
 }
 
 // 🔥 트렌드 점수 계산 (높을수록 인기/중요)
@@ -2623,7 +2688,8 @@ function renderNews(news) {
 
     grouped[hour].forEach(item => {
       const card = document.createElement('div');
-      card.className = 'news-card' + (item.importance === 'high' ? ' high' : '');
+const catRank = getCatRankClass(item);
+      card.className = 'news-card' + (item.importance === 'high' ? ' high' : '') + (catRank ? ' ' + catRank : '');
       card.dataset.category = item.category;
       card.dataset.title = item.title;
       card.onclick = () => toggleCard(card);
@@ -2643,7 +2709,7 @@ function renderNews(news) {
             <span class="card-time" style="color:rgba(255,255,255,0.85)">${item.hour}</span>
               <span class="card-fish-reward" title="읽으면 받을 물고기">🐟 +${calcFishReward(item)}</span>
             </div>
-           <div class="card-hook hero-hook ${getRankClass(item)}">${item.hook || item.title}</div>
+          <div class="card-hook hero-hook ${getAllRankClass(item)}">${getRankBadge(item)}${item.hook || item.title}</div>
             <div class="card-title-sub hero-sub">${item.hook ? item.title : (item.titleKo || '')}</div>
           </div>
         </div>
