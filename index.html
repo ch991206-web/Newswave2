@@ -776,23 +776,23 @@
 <div id="view-news" class="view active">
 <div class="tabs">
   <div class="tab active" onclick="setTab(this,'전체')">전체</div>
-  <div class="tab" onclick="setTab(this,'정치')">🏛 정치</div>
-  <div class="tab" onclick="setTab(this,'경제')">💰 경제</div>
-  <div class="tab" onclick="setTab(this,'테크')">🤖 테크</div>
-  <div class="tab" onclick="setTab(this,'사회')">🧑‍🤝‍🧑 사회</div>
-  <div class="tab" onclick="setTab(this,'해외')">🌍 해외</div>
-  <div class="tab" onclick="setTab(this,'연예')">🎬 연예</div>
-  <div class="tab" onclick="setTab(this,'스포츠')">⚽ 스포츠</div>
+  <div class="tab" onclick="setTab(this,'정치')">정치</div>
+  <div class="tab" onclick="setTab(this,'경제')">경제</div>
+  <div class="tab" onclick="setTab(this,'테크')">테크</div>
+  <div class="tab" onclick="setTab(this,'사회')">사회</div>
+  <div class="tab" onclick="setTab(this,'해외')">해외</div>
+  <div class="tab" onclick="setTab(this,'연예')">연예</div>
+  <div class="tab" onclick="setTab(this,'스포츠')">스포츠</div>
 </div>
 
 <div class="main">
   <div class="filter-bar">
     <button class="imp-toggle-btn" id="impBtn" onclick="toggleImp()">🔴 중요 뉴스만</button>
     <div class="layout-toggle">
-      <button class="layout-btn active" id="listBtn" onclick="setLayout('list')">
+<button class="layout-btn" id="listBtn" onclick="setLayout('list')">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
       </button>
-      <button class="layout-btn" id="gridBtn" onclick="setLayout('grid')">
+      <button class="layout-btn active" id="gridBtn" onclick="setLayout('grid')">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
       </button>
     </div>
@@ -1223,6 +1223,12 @@ function setTab(el, tab) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
   currentTab = tab;
+  // '전체'면 격자, 카테고리별이면 리스트로 자동 전환
+  if (tab === '전체') {
+    setLayout('grid');
+  } else {
+    setLayout('list');
+  }
   filterNews();
 }
 
@@ -1723,7 +1729,7 @@ function renderCommunity() {
 }
 
 let impOnly = false;
-let currentLayout = 'list';
+let currentLayout = 'grid';
 
 // 격자/리스트 전환
 function setLayout(mode) {
