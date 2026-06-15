@@ -1891,10 +1891,14 @@ function earnFishFromReading(titleOrArticle) {
   catState.read++;
   
   // 헤더 카운터 갱신
-  updateHeaderFish(true);
+updateHeaderFish(true);
   
   // cat 화면이 열려있으면 갱신
   if (document.getElementById('view-cat').classList.contains('active')) updateCat(true);
+  
+  // 격자(타일) 카드 다시 그리기 (✓ 표시 즉시 반영)
+  renderGrid(currentNews);
+  
   saveCatState();
   return reward;
 }
