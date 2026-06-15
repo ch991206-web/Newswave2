@@ -937,6 +937,7 @@
       <div class="cat-progress"><div class="cat-progress-bar" id="catBar" style="width:0%"></div></div>
     </div>
 
+    <button class="cat-feed-btn" id="evolveBtn" onclick="evolveCat()">✨ 진화하기</button>
     <div class="cat-hint">📰 뉴스를 읽으면 물고기가 쌓여요!<br>중요 뉴스 🐟 2마리 · 일반 뉴스 🐟 1마리</div>
 
     <!-- 상점 탭 -->
@@ -1036,6 +1037,7 @@ function saveCatState() {
       fish: catState.fish,
       read: catState.read,
       level: catState.level,
+      currentStage: currentStage,
       owned: owned,
       equipped: equipped,
       readNews: Array.from(readNews),
@@ -1054,6 +1056,7 @@ function loadCatState() {
     if (data.fish != null) catState.fish = data.fish;
     if (data.read != null) catState.read = data.read;
     if (data.level != null) catState.level = data.level;
+    if (data.currentStage != null) currentStage = data.currentStage;
     if (data.owned) Object.assign(owned, data.owned);
     if (data.equipped) Object.assign(equipped, data.equipped);
     if (Array.isArray(data.readNews)) {
@@ -1064,13 +1067,16 @@ function loadCatState() {
     console.warn('고양이 불러오기 실패:', e);
   }
 }
-  const catStages = [
-  { emoji: '🥚', name: '냥이알', need: 0 },
-  { emoji: '🐱', name: '아기냥', need: 5 },
-  { emoji: '😺', name: '청소년냥', need: 15 },
-  { emoji: '😻', name: '어른냥', need: 30 },
-  { emoji: '🦁', name: '뚱냥대장', need: 50 }
+const catStages = [
+  { emoji: '🥚', name: '냥이알', cost: 0 },
+  { emoji: '🐱', name: '아기냥', cost: 100 },
+  { emoji: '😺', name: '청소년냥', cost: 300 },
+  { emoji: '😻', name: '어른냥', cost: 500 },
+  { emoji: '🦁', name: '뚱냥대장', cost: 1000 }
 ];
+
+// 사용자가 현재 도달한 진화 단계 (저장됨)
+let currentStage = 0;
 
 const today = new Date();
 document.getElementById('todayDate').textContent = today.toLocaleDateString('ko-KR', {
@@ -1584,11 +1590,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // 🐱 고양이 키우기 로직
 function currentStageIndex() {
-  let idx = 0;
-  for (let i = 0; i < catStages.length; i++) {
-    if (catState.fish >= catStages[i].need) idx = i;
+  return currentStage;
+}
+
+// 다음 진화 비용
+function nextEvolveCost() {
+  const next = catStages[currentStage + 1];
+  return next ? next.cost : null;
+}
+
+// 진화하기 (버튼 클릭)
+function evolveCat() {
+  const cost = nextEvolveCost();
+  if (cost === null) {
+    alert('🏆 최종 진화 완료!');
+    return;
   }
-  return idx;
+  if (catState.fish < cost) {
+    alert(`🐟 물고기가 부족해요!\n필요: ${cost}마리\n현재: ${catState.fish}마리`);
+    return;
+  }
+  // 물고기 차감하고 진화
+  catState.fish -= cost;
+  currentStage++;
+  const stage = catStages[currentStage];
+  
+  // 헤더 카운터 갱신
+  updateHeaderFish(true);
+  
+  // 진화 효과
+  alert(`🎉 진화 성공!\n${stage.emoji} ${stage.name}이 되었어요!`);
+  
+  updateCat(true);
+  saveCatState();
 }
 
 function updateCat(bounce) {
@@ -1616,27 +1650,41 @@ function updateCat(bounce) {
   const bgText = (d.bg && !d.bg.free) ? d.bg.emoji + ' ' + d.bg.name + ' 배경' : '';
   if (itemsEl) itemsEl.textContent = [accText, bgText].filter(Boolean).join(' · ') || '';
 
-  // 기분
+// 기분
   let mood = '기분: 보통';
   if (catState.fish === 0) mood = '기분: 배고파요 🥺';
-  else if (next && catState.fish >= next.need - 2) mood = '기분: 신나요! 🎉';
+  else if (next && catState.fish >= next.cost) mood = '기분: 진화 가능! 🎉';
   else mood = '기분: 좋아요 😊';
   document.getElementById('catMood').textContent = mood;
 
-  // 진화 진행도
+// 진화 진행도 (비용제)
   const nextEvoEl = document.getElementById('nextEvo');
   const catBarEl = document.getElementById('catBar');
   const labelEl = document.querySelector('.cat-progress-label');
   if (next) {
-    const remain = next.need - catState.fish;
-    const span = next.need - stage.need;
-    const done = catState.fish - stage.need;
-    if (nextEvoEl) nextEvoEl.textContent = remain;
-    if (catBarEl) catBarEl.style.width = Math.min(100, (done/span)*100) + '%';
-    if (labelEl) labelEl.innerHTML = `다음 진화까지 <span id="nextEvo">${remain}</span>마리`;
+    const cost = next.cost;
+    const progress = Math.min(100, (catState.fish / cost) * 100);
+    if (nextEvoEl) nextEvoEl.textContent = Math.max(0, cost - catState.fish);
+    if (catBarEl) catBarEl.style.width = progress + '%';
+    if (labelEl) labelEl.innerHTML = `다음 진화: <strong>${next.emoji} ${next.name}</strong> (🐟 ${cost}마리 필요)`;
   } else {
     if (catBarEl) catBarEl.style.width = '100%';
     if (labelEl) labelEl.textContent = '최종 진화 완료! 🏆';
+  }
+  
+  // 진화 버튼 활성화 여부
+  const evolveBtn = document.getElementById('evolveBtn');
+  if (evolveBtn) {
+    if (!next) {
+      evolveBtn.style.display = 'none';
+    } else {
+      evolveBtn.style.display = 'block';
+      const canEvolve = catState.fish >= next.cost;
+      evolveBtn.disabled = !canEvolve;
+      evolveBtn.textContent = canEvolve 
+        ? `✨ ${next.name}으로 진화하기 (🐟 ${next.cost})`
+        : `🔒 ${next.name}까지 🐟 ${next.cost - catState.fish}마리 더`;
+    }
   }
 
   if (bounce) {
