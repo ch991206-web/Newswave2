@@ -431,8 +431,67 @@
     position: fixed; inset: 0; z-index: 499;
     background: transparent;
   }
+  /* 📖 읽기 진행 바 */
+  .read-progress-bar {
+    position: fixed; top: 16px; left: 50%; transform: translateX(-50%) translateY(-100px);
+    z-index: 400; background: var(--surface2);
+    border: 1px solid var(--border2); border-radius: 24px;
+    padding: 8px 16px; min-width: 200px;
+    display: flex; align-items: center; gap: 10px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+    opacity: 0; transition: all 0.3s ease;
+  }
+  .read-progress-bar.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+  .read-progress-fill {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    background: linear-gradient(90deg, var(--accent3), var(--accent));
+    border-radius: 24px; opacity: 0.25;
+    transition: width 0.1s linear;
+  }
+  .read-progress-text {
+    position: relative; z-index: 1;
+    font-size: 12px; font-weight: 700;
+    color: var(--text); white-space: nowrap;
+    width: 100%; text-align: center;
+  }
+  .read-progress-bar.already-read .read-progress-fill {
+    background: var(--muted); opacity: 0.3;
+  }
+  .read-progress-bar.already-read .read-progress-text {
+    color: var(--muted);
+  }
+  
+  /* 🐟 보상 획득 토스트 */
+  .reward-toast {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.5);
+    z-index: 500; background: linear-gradient(135deg, var(--accent3), var(--accent));
+    color: #fff; padding: 16px 28px; border-radius: 50px;
+    font-size: 18px; font-weight: 800;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    opacity: 0; transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    pointer-events: none;
+  }
+  .reward-toast.show {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  
+  /* 뉴스 카드 보상 표시 (이미 읽음) */
+  .news-tile.read::after {
+    content: '✓';
+    position: absolute; top: 8px; right: 8px;
+    background: rgba(80,212,160,0.9);
+    color: #fff; font-weight: 800;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+  }
+  
   /* Loading */
-  .skeleton { background: linear-gradient(90deg, var(--border) 25%, var(--border2) 50%, var(--border) 75%); background-size: 200% 100%; animation: shimmer 1.8s infinite; border-radius: 8px; }
   @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
 
   /* Buttons */
@@ -1576,7 +1635,11 @@ function toggleReelDetail(idx, btn) {
   if (!reel) return;
   const isOpen = reel.classList.toggle('detail-mode');
   btn.textContent = isOpen ? '접기 ↑' : '자세히 보기 ↓';
-  if (isOpen && currentNews[idx]) earnFishFromReading(currentNews[idx].title);
+  if (isOpen && currentNews[idx]) {
+    startReadingTimer(currentNews[idx]);
+  } else {
+    stopReadingTimer();
+  }
 }
 
 // 릴스 스크롤하면 힌트 숨기기
@@ -1704,7 +1767,98 @@ function feedCat() {
 
 // 뉴스를 펼쳐서 읽으면 물고기 적립
 // 뉴스별 물고기 보상 계산
-function calcFishReward(article) {
+// 📖 뉴스 읽기 타이머 시스템
+const READ_DURATION = 15; // 보상 받기까지 시간 (초)
+let readingTimer = null;
+let readingArticle = null;
+let readingStartTime = 0;
+
+function startReadingTimer(article) {
+  // 이미 읽은 뉴스면 타이머 없이 그냥 표시만
+  if (readNews.has(article.title)) {
+    showReadingProgress(0, true); // 이미 읽음 표시
+    return;
+  }
+  
+  stopReadingTimer();
+  readingArticle = article;
+  readingStartTime = Date.now();
+  
+  // 진행 바 만들기
+  showReadingProgress(0);
+  
+  // 0.1초마다 진행도 업데이트
+  readingTimer = setInterval(() => {
+    const elapsed = (Date.now() - readingStartTime) / 1000;
+    const progress = Math.min(elapsed / READ_DURATION, 1);
+    showReadingProgress(progress);
+    
+    if (elapsed >= READ_DURATION) {
+      // 15초 채움! 보상 지급
+      stopReadingTimer();
+      const reward = earnFishFromReading(readingArticle);
+      showRewardToast(reward);
+    }
+  }, 100);
+}
+
+function stopReadingTimer() {
+  if (readingTimer) {
+    clearInterval(readingTimer);
+    readingTimer = null;
+  }
+  readingArticle = null;
+  hideReadingProgress();
+}
+
+// 진행 바 UI
+function showReadingProgress(progress, alreadyRead) {
+  let bar = document.getElementById('readProgressBar');
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'readProgressBar';
+    bar.className = 'read-progress-bar';
+    bar.innerHTML = `
+      <div class="read-progress-fill" id="readProgressFill"></div>
+      <span class="read-progress-text" id="readProgressText"></span>
+    `;
+    document.body.appendChild(bar);
+  }
+  bar.classList.add('show');
+  
+  if (alreadyRead) {
+    document.getElementById('readProgressFill').style.width = '100%';
+    document.getElementById('readProgressText').textContent = '✓ 이미 읽은 뉴스';
+    bar.classList.add('already-read');
+    setTimeout(() => bar.classList.remove('show'), 2000);
+  } else {
+    bar.classList.remove('already-read');
+    document.getElementById('readProgressFill').style.width = (progress * 100) + '%';
+    const remaining = Math.max(0, Math.ceil(READ_DURATION - (progress * READ_DURATION)));
+    document.getElementById('readProgressText').textContent = 
+      progress >= 1 ? '🐟 획득!' : `🐟 ${remaining}초 후 보상`;
+  }
+}
+
+function hideReadingProgress() {
+  const bar = document.getElementById('readProgressBar');
+  if (bar) bar.classList.remove('show');
+}
+
+// 보상 획득 토스트
+function showRewardToast(reward) {
+  if (!reward) return;
+  const toast = document.createElement('div');
+  toast.className = 'reward-toast';
+  toast.innerHTML = `🐟 +${reward} 획득!`;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.classList.add('show'), 50);
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => toast.remove(), 300);
+  }, 2000);
+}
+  function calcFishReward(article) {
   if (!article) return 1;
   // 이미 읽은 뉴스는 0
   if (readNews.has(article.title)) return 0;
@@ -1922,8 +2076,9 @@ function renderGrid(news) {
   function tileHTML(item, idx) {
     const num = item.data && item.data[0] ? `${item.data[0].label} ${item.data[0].value}` : '';
     const photoStyle = item.img ? `style="background-image:linear-gradient(to bottom, rgba(0,0,0,0.15), rgba(0,0,0,0.7)), url('${item.img}');background-size:cover;background-position:center"` : '';
+    const isRead = readNews.has(item.title);
     return `
-      <div class="news-tile ${cvMap[item.category]||'cv-social'}" ${photoStyle} data-category="${item.category}" data-imp="${item.importance}" onclick="openNewsModal(${idx})">
+      <div class="news-tile ${cvMap[item.category]||'cv-social'} ${isRead ? 'read' : ''}" ${photoStyle} data-category="${item.category}" data-imp="${item.importance}" onclick="openNewsModal(${idx})">
         <div class="nt-top">
           <span class="nt-cat">${item.category}</span>
           ${item.importance==='high' ? '<span class="nt-imp">🔴</span>' : ''}
@@ -2066,7 +2221,8 @@ function stopSpeechOnClose() {
 function openNewsModal(idx) {
   const item = currentNews[idx];
   if (!item) return;
-  earnFishFromReading(item.title);
+  // 15초 타이머 시작 (즉시 보상 X)
+  startReadingTimer(item);
   const badgeMap = {'정치':'badge-politics','경제':'badge-stock','테크':'badge-tech','연예':'badge-entertainment','사회':'badge-social','해외':'badge-world','스포츠':'badge-sports'};
   const summary = item.summary || item.neutral || '';
   const timeline = (item.timeline||[]).map((t,i,arr)=>`
@@ -2133,6 +2289,7 @@ function openNewsModal(idx) {
 function closeNewsModal() {
   document.getElementById('newsModal').classList.remove('open');
   stopSpeechOnClose();
+  stopReadingTimer();
 }
 
 
@@ -2166,8 +2323,14 @@ function toggleCard(card) {
   document.querySelectorAll('.news-card').forEach(c => c.classList.remove('expanded'));
   if (!wasExpanded) {
     card.classList.add('expanded');
-    // 펼쳐서 읽으면 물고기 적립
-    if (card.dataset.title) earnFishFromReading(card.dataset.title);
+    // 15초 타이머 시작
+    if (card.dataset.title) {
+      const item = currentNews.find(n => n.title === card.dataset.title);
+      if (item) startReadingTimer(item);
+    }
+  } else {
+    // 닫으면 타이머 정지
+    stopReadingTimer();
   }
 }
 
