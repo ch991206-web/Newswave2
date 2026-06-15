@@ -1426,23 +1426,34 @@ function showTermPopup(e, word, def) {
   document.body.appendChild(backdrop);
   document.body.appendChild(popup);
   
-  // 위치 계산 (클릭한 단어 근처에)
-  const rect = e.target.getBoundingClientRect();
-  const popupRect = popup.getBoundingClientRect();
-  let left = rect.left;
-  let top = rect.bottom + 8;
+  // 모바일 감지
+  const isMobile = window.innerWidth < 600;
   
-  // 화면 밖으로 안 나가게 보정
-  if (left + popupRect.width > window.innerWidth - 16) {
-    left = window.innerWidth - popupRect.width - 16;
+  if (isMobile) {
+    // 모바일: 화면 중앙에 띄우기
+    popup.style.left = '50%';
+    popup.style.top = '50%';
+    popup.style.transform = 'translate(-50%, -50%)';
+    popup.style.maxWidth = '85%';
+    popup.style.width = '300px';
+  } else {
+    // PC: 클릭한 단어 근처에
+    const rect = e.target.getBoundingClientRect();
+    const popupRect = popup.getBoundingClientRect();
+    let left = rect.left;
+    let top = rect.bottom + 8;
+    
+    if (left + popupRect.width > window.innerWidth - 16) {
+      left = window.innerWidth - popupRect.width - 16;
+    }
+    if (left < 16) left = 16;
+    if (top + popupRect.height > window.innerHeight - 16) {
+      top = rect.top - popupRect.height - 8;
+    }
+    
+    popup.style.left = left + 'px';
+    popup.style.top = top + 'px';
   }
-  if (left < 16) left = 16;
-  if (top + popupRect.height > window.innerHeight - 16) {
-    top = rect.top - popupRect.height - 8;
-  }
-  
-  popup.style.left = left + 'px';
-  popup.style.top = top + 'px';
 }
 
 function closeTermPopup() {
