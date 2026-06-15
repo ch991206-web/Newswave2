@@ -988,7 +988,44 @@ function setTheme(mode) {
 const catState = { fish: 0, read: 0, level: 1 };
 const readNews = new Set(); // 중복 적립 방지
 // 진화 단계: 레벨별 이모지/이름, 진화에 필요한 누적 물고기
-const catStages = [
+// 🐱 고양이 상태 저장/불러오기 (localStorage 사용)
+const CAT_STORAGE_KEY = 'newsda_cat_state';
+
+function saveCatState() {
+  try {
+    const data = {
+      fish: catState.fish,
+      read: catState.read,
+      level: catState.level,
+      owned: owned,
+      equipped: equipped,
+      readNews: Array.from(readNews),
+    };
+    localStorage.setItem(CAT_STORAGE_KEY, JSON.stringify(data));
+  } catch (e) {
+    console.warn('고양이 저장 실패:', e);
+  }
+}
+
+function loadCatState() {
+  try {
+    const raw = localStorage.getItem(CAT_STORAGE_KEY);
+    if (!raw) return;
+    const data = JSON.parse(raw);
+    if (data.fish != null) catState.fish = data.fish;
+    if (data.read != null) catState.read = data.read;
+    if (data.level != null) catState.level = data.level;
+    if (data.owned) Object.assign(owned, data.owned);
+    if (data.equipped) Object.assign(equipped, data.equipped);
+    if (Array.isArray(data.readNews)) {
+      readNews.clear();
+      data.readNews.forEach(t => readNews.add(t));
+    }
+  } catch (e) {
+    console.warn('고양이 불러오기 실패:', e);
+  }
+}
+  const catStages = [
   { emoji: '🥚', name: '냥이알', need: 0 },
   { emoji: '🐱', name: '아기냥', need: 5 },
   { emoji: '😺', name: '청소년냥', need: 15 },
@@ -1575,6 +1612,7 @@ function updateCat(bounce) {
 function feedCat() {
   catState.fish++;
   updateCat(true);
+  saveCatState();
 }
 
 // 뉴스를 펼쳐서 읽으면 물고기 적립
@@ -1585,6 +1623,7 @@ function earnFishFromReading(title) {
   catState.read++;
   // cat 화면이 열려있으면 갱신
   if (document.getElementById('view-cat').classList.contains('active')) updateCat(true);
+  saveCatState();
 }
 
 // 🛒 상점 데이터
@@ -1667,9 +1706,10 @@ function buyOrEquip(tab, id) {
     catState.fish -= item.price;
     owned[tab].push(id);
   }
-  equipped[tab] = (equipped[tab] === id && !item.free) ? `${tab}_none` : id;
+equipped[tab] = (equipped[tab] === id && !item.free) ? `${tab}_none` : id;
   updateCat(true);
   renderShop();
+  saveCatState();
 }
 
 function getEquippedDisplay() {
@@ -2328,6 +2368,8 @@ try {
   }
 }
 
+// 시작시 고양이 상태 불러오기
+loadCatState();
 // 시작시 진짜 뉴스 자동 로드 (실패하면 샘플)
 fetchNews();
 </script>
