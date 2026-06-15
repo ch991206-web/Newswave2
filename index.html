@@ -107,6 +107,33 @@
     cursor: pointer; color: var(--text); border-radius: 50%; transition: background 0.15s;
   }
   .header-icon-btn:hover { background: var(--surface2); }
+  
+  /* 헤더 물고기 카운터 */
+  .header-fish {
+    display: flex; align-items: center; gap: 4px;
+    padding: 6px 12px; margin-right: 4px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.18s;
+  }
+  .header-fish:hover {
+    border-color: var(--accent);
+    transform: translateY(-1px);
+  }
+  .header-fish-ico { font-size: 14px; line-height: 1; }
+  .header-fish-count {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px; font-weight: 700;
+    color: var(--accent);
+    min-width: 14px;function earnFishFromReading(title)
+  }
+  .header-fish.bounce { animation: fishbounce 0.5s ease; }
+  @keyframes fishbounce {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+  }
   .today-date { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; letter-spacing: 0.2px; }
   .live-badge { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--muted); font-family: 'DM Mono', monospace; }
   .live-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent3); animation: pulse 2.5s infinite; }
@@ -203,7 +230,16 @@
   .badge-sports       { background: rgba(245,196,78,0.12); color: #f5c84e; }
   .badge-tech         { background: rgba(120,140,250,0.12); color: #94a4ff; }
 
-  .card-time { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; margin-left: auto; }
+ .card-time { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; margin-left: auto; }
+  .card-fish-reward {
+    font-size: 11px; font-weight: 700;
+    color: var(--accent3);
+    background: rgba(80,212,160,0.15);
+    padding: 2px 7px;
+    border-radius: 5px;
+    margin-left: 6px;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+  }
   .card-title { font-family: 'SUIT', 'Pretendard', sans-serif; font-size: 15px; font-weight: 800; line-height: 1.5; margin-bottom: 6px; letter-spacing: -0.3px; color: var(--text); }
   .card-title-ko { font-size: 13px; color: var(--muted); line-height: 1.45; margin-top: -2px; margin-bottom: 8px; }
   .card-keywords { display: flex; gap: 5px; flex-wrap: wrap; }
@@ -763,7 +799,11 @@
     <span id="todayDate" class="logo-date"></span>
   </div>
   <div class="header-right">
-<div class="header-icon-btn" onclick="switchView('community', null)">
+    <div class="header-fish" id="headerFish" onclick="switchView('cat', null)" title="내 물고기">
+      <span class="header-fish-ico">🐟</span>
+      <span class="header-fish-count" id="headerFishCount">0</span>
+    </div>
+    <div class="header-icon-btn" onclick="switchView('community', null)">
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
       </svg>
@@ -897,8 +937,7 @@
       <div class="cat-progress"><div class="cat-progress-bar" id="catBar" style="width:0%"></div></div>
     </div>
 
-    <button class="cat-feed-btn" onclick="feedCat()">🐟 물고기 주기</button>
-    <div class="cat-hint">뉴스 카드를 펼쳐서 읽으면 자동으로 물고기가 쌓여요.</div>
+    <div class="cat-hint">📰 뉴스를 읽으면 물고기가 쌓여요!<br>중요 뉴스 🐟 2마리 · 일반 뉴스 🐟 1마리</div>
 
     <!-- 상점 탭 -->
     <div class="shop-tabs">
@@ -1616,14 +1655,58 @@ function feedCat() {
 }
 
 // 뉴스를 펼쳐서 읽으면 물고기 적립
-function earnFishFromReading(title) {
-  if (readNews.has(title)) return;
-  readNews.add(title);
-  catState.fish++;
+// 뉴스별 물고기 보상 계산
+function calcFishReward(article) {
+  if (!article) return 1;
+  // 이미 읽은 뉴스는 0
+  if (readNews.has(article.title)) return 0;
+  let reward = 1; // 기본 1마리
+  // 중요 뉴스는 +1 (총 2마리)
+  if (article.importance === 'high') reward++;
+  // 첫 읽기 보너스 +1
+  reward++;
+  return reward;
+}
+
+function earnFishFromReading(titleOrArticle) {
+  // 호환성: 문자열도 받고 객체도 받음
+  let article;
+  if (typeof titleOrArticle === 'string') {
+    article = currentNews.find(n => n.title === titleOrArticle);
+    if (!article) article = { title: titleOrArticle, importance: 'normal' };
+  } else {
+    article = titleOrArticle;
+  }
+  
+  if (readNews.has(article.title)) return 0;
+  
+  const reward = calcFishReward(article);
+  readNews.add(article.title);
+  catState.fish += reward;
   catState.read++;
+  
+  // 헤더 카운터 갱신
+  updateHeaderFish(true);
+  
   // cat 화면이 열려있으면 갱신
   if (document.getElementById('view-cat').classList.contains('active')) updateCat(true);
   saveCatState();
+  return reward;
+}
+
+// 헤더 물고기 카운터 업데이트
+function updateHeaderFish(bounce) {
+  const el = document.getElementById('headerFishCount');
+  if (!el) return;
+  el.textContent = catState.fish;
+  if (bounce) {
+    const wrap = document.getElementById('headerFish');
+    if (wrap) {
+      wrap.classList.remove('bounce');
+      void wrap.offsetWidth;
+      wrap.classList.add('bounce');
+    }
+  }
 }
 
 // 🛒 상점 데이터
@@ -2190,7 +2273,8 @@ function renderNews(news) {
             <div class="card-meta">
               <span class="category-badge ${badgeMap[item.category] || 'badge-social'}">${item.category}</span>
               ${item.importance === 'high' ? '<span class="imp-badge">🔴 중요</span>' : ''}
-              <span class="card-time" style="color:rgba(255,255,255,0.85)">${item.hour}</span>
+            <span class="card-time" style="color:rgba(255,255,255,0.85)">${item.hour}</span>
+              <span class="card-fish-reward" title="읽으면 받을 물고기">🐟 +${calcFishReward(item)}</span>
             </div>
             <div class="card-hook hero-hook">${item.hook || item.title}</div>
             <div class="card-title-sub hero-sub">${item.hook ? item.title : (item.titleKo || '')}</div>
@@ -2370,6 +2454,8 @@ try {
 
 // 시작시 고양이 상태 불러오기
 loadCatState();
+// 헤더 물고기 카운터 표시
+updateHeaderFish();
 // 시작시 진짜 뉴스 자동 로드 (실패하면 샘플)
 fetchNews();
 </script>
