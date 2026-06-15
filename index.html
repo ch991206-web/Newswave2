@@ -382,14 +382,16 @@
   .chain-text { font-size: 13px; color: var(--text2); line-height: 1.55; padding-bottom: 14px; }
 
   /* 어려운 단어 인라인 표시 */
-  .term-mark {
+.term-mark {
     color: var(--accent);
     border-bottom: 1px dashed var(--accent);
     cursor: pointer;
     font-weight: 500;
-    padding-bottom: 1px;
+    padding: 2px 1px;
+    -webkit-tap-highlight-color: rgba(91,156,246,0.3);
+    touch-action: manipulation;
   }
-  .term-mark:hover { opacity: 0.7; }
+  .term-mark:hover, .term-mark:active { opacity: 0.7; }
   
   /* 단어 뜻 팝업 */
   .term-popup {
