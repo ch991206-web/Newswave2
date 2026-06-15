@@ -1793,11 +1793,14 @@ function startReadingTimer(article) {
     const progress = Math.min(elapsed / READ_DURATION, 1);
     showReadingProgress(progress);
     
-    if (elapsed >= READ_DURATION) {
-      // 15초 채움! 보상 지급
+if (elapsed >= READ_DURATION) {
+      // null 되기 전에 미리 저장!
+      const articleToReward = readingArticle;
       stopReadingTimer();
-      const reward = earnFishFromReading(readingArticle);
-      showRewardToast(reward);
+      if (articleToReward) {
+        const reward = earnFishFromReading(articleToReward);
+        showRewardToast(reward);
+      }
     }
   }, 100);
 }
