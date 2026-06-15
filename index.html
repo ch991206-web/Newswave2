@@ -1768,7 +1768,7 @@ function feedCat() {
 // 뉴스를 펼쳐서 읽으면 물고기 적립
 // 뉴스별 물고기 보상 계산
 // 📖 뉴스 읽기 타이머 시스템
-const READ_DURATION = 10; // 보상 받기까지 시간 (초)
+const READ_DURATION = 8; // 보상 받기까지 시간 (초)
 let readingTimer = null;
 let readingArticle = null;
 let readingStartTime = 0;
@@ -1787,22 +1787,20 @@ function startReadingTimer(article) {
   // 진행 바 만들기
   showReadingProgress(0);
   
- // 0.1초마다 진행도 업데이트
+  // 0.1초마다 진행도 업데이트
   readingTimer = setInterval(() => {
     const elapsed = (Date.now() - readingStartTime) / 1000;
     const progress = Math.min(elapsed / READ_DURATION, 1);
     showReadingProgress(progress);
     
     if (elapsed >= READ_DURATION) {
-      // 8초 채움! 먼저 보상 지급, 그 다음 타이머 정지
-      const articleToReward = readingArticle;  // null 되기 전에 저장!
+      // 15초 채움! 보상 지급
       stopReadingTimer();
-      if (articleToReward) {
-        const reward = earnFishFromReading(articleToReward);
-        showRewardToast(reward);
-      }
+      const reward = earnFishFromReading(readingArticle);
+      showRewardToast(reward);
     }
   }, 100);
+}
 
 function stopReadingTimer() {
   if (readingTimer) {
@@ -1832,7 +1830,7 @@ function showReadingProgress(progress, alreadyRead) {
     document.getElementById('readProgressFill').style.width = '100%';
     document.getElementById('readProgressText').textContent = '✓ 이미 읽은 뉴스';
     bar.classList.add('already-read');
-    setTimeout(() => bar.classList.remove('show'), 4000);
+    setTimeout(() => bar.classList.remove('show'), 2000);
   } else {
     bar.classList.remove('already-read');
     document.getElementById('readProgressFill').style.width = (progress * 100) + '%';
@@ -1858,12 +1856,12 @@ function showRewardToast(reward) {
   setTimeout(() => {
     toast.classList.remove('show');
     setTimeout(() => toast.remove(), 300);
-  }, 4000);
+  }, 2000);
 }
-function calcFishReward(article, ignoreRead) {
+  function calcFishReward(article) {
   if (!article) return 1;
-  // 이미 읽은 뉴스는 0 (계산 시점에서만 체크, 지급 시점엔 무시)
-  if (!ignoreRead && readNews.has(article.title)) return 0;
+  // 이미 읽은 뉴스는 0
+  if (readNews.has(article.title)) return 0;
   let reward = 1; // 기본 1마리
   // 중요 뉴스는 +1 (총 2마리)
   if (article.importance === 'high') reward++;
@@ -1882,9 +1880,9 @@ function earnFishFromReading(titleOrArticle) {
     article = titleOrArticle;
   }
   
-if (readNews.has(article.title)) return 0;
+  if (readNews.has(article.title)) return 0;
   
-  const reward = calcFishReward(article, true);  // 이미 읽음 체크 무시
+  const reward = calcFishReward(article);
   readNews.add(article.title);
   catState.fish += reward;
   catState.read++;
