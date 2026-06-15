@@ -1787,20 +1787,22 @@ function startReadingTimer(article) {
   // 진행 바 만들기
   showReadingProgress(0);
   
-  // 0.1초마다 진행도 업데이트
+ // 0.1초마다 진행도 업데이트
   readingTimer = setInterval(() => {
     const elapsed = (Date.now() - readingStartTime) / 1000;
     const progress = Math.min(elapsed / READ_DURATION, 1);
     showReadingProgress(progress);
     
     if (elapsed >= READ_DURATION) {
-      // 15초 채움! 보상 지급
+      // 8초 채움! 먼저 보상 지급, 그 다음 타이머 정지
+      const articleToReward = readingArticle;  // null 되기 전에 저장!
       stopReadingTimer();
-      const reward = earnFishFromReading(readingArticle);
-      showRewardToast(reward);
+      if (articleToReward) {
+        const reward = earnFishFromReading(articleToReward);
+        showRewardToast(reward);
+      }
     }
   }, 100);
-}
 
 function stopReadingTimer() {
   if (readingTimer) {
