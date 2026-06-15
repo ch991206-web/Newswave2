@@ -1858,10 +1858,10 @@ function showRewardToast(reward) {
     setTimeout(() => toast.remove(), 300);
   }, 4000);
 }
-  function calcFishReward(article) {
+function calcFishReward(article, ignoreRead) {
   if (!article) return 1;
-  // 이미 읽은 뉴스는 0
-  if (readNews.has(article.title)) return 0;
+  // 이미 읽은 뉴스는 0 (계산 시점에서만 체크, 지급 시점엔 무시)
+  if (!ignoreRead && readNews.has(article.title)) return 0;
   let reward = 1; // 기본 1마리
   // 중요 뉴스는 +1 (총 2마리)
   if (article.importance === 'high') reward++;
@@ -1880,9 +1880,9 @@ function earnFishFromReading(titleOrArticle) {
     article = titleOrArticle;
   }
   
-  if (readNews.has(article.title)) return 0;
+if (readNews.has(article.title)) return 0;
   
-  const reward = calcFishReward(article);
+  const reward = calcFishReward(article, true);  // 이미 읽음 체크 무시
   readNews.add(article.title);
   catState.fish += reward;
   catState.read++;
